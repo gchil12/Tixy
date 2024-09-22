@@ -1,0 +1,4 @@
+flask
+openai
+pinecone-client
+gunicorn
