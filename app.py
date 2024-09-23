@@ -79,16 +79,16 @@ except Exception as e:
     raise
 
 # Function to update ManyChat user attribute
-def update_manychat_user_attribute(messenger_user_id, attribute_name, attribute_value):
-    url = "https://api.manychat.com/fb/subscriber/setCustomField"
+def update_manychat_user_attribute(messenger_user_id, field_name, field_value):
+    url = "https://api.manychat.com/fb/subscriber/setCustomFieldByName"  # Ensure this is correct
     headers = {
         "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
         "Content-Type": "application/json"
     }
     data = {
         "subscriber_id": messenger_user_id,
-        "field_name": attribute_name,  # Field name in ManyChat
-        "field_value": attribute_value  # Value to set
+        "field_name": field_name,
+        "field_value": field_value
     }
 
     try:
@@ -111,9 +111,9 @@ def send_to_manychat(messenger_user_id, content_id, additional_data=None):
         "subscriber_id": messenger_user_id,
         "content_id": content_id
     }
-    # Include additional data if provided
+
     if additional_data:
-        data["data"] = additional_data  # Correct way to merge additional data
+        data.update(additional_data)
 
     try:
         response = requests.post(url, headers=headers, json=data)
