@@ -78,6 +78,30 @@ except Exception as e:
     logger.error(f"Error initializing Pinecone: {e}")
     raise
 
+def update_manychat_user_attribute(messenger_user_id, attribute_name, attribute_value):
+    url = "https://api.manychat.com/fb/sending/sendContent"
+    headers = {
+        "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "subscriber_id": messenger_user_id,
+        "data": {
+            attribute_name: attribute_value
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response_data = response.json()
+        logger.info(f"Update Attribute Response: Status Code: {response.status_code}, Response: {response_data}")
+        return response.status_code == 200
+    except Exception as e:
+        logger.error(f"Error updating user attribute in ManyChat: {e}")
+        return False
+
+
+
 # Send message to ManyChat function
 
 def send_to_manychat(messenger_user_id, content_id, error_message=None):
@@ -87,30 +111,22 @@ def send_to_manychat(messenger_user_id, content_id, error_message=None):
         "Content-Type": "application/json"
     }
     data = {
-        "subscriber_id": messenger_user_id,  # Use the correct parameter name if it's different
+        "subscriber_id": messenger_user_id,
         "content_id": content_id
     }
     if error_message:
         data["error_message"] = error_message
 
-    # Send the request to ManyChat
     try:
         response = requests.post(url, headers=headers, json=data)
         response_data = response.json()
-        
-        # Log the response from ManyChat
         logger.info(f"ManyChat Response: Status Code: {response.status_code}, Response: {response_data}")
-        
-        # Return True if the request was successful
         return response.status_code == 200
     except Exception as e:
-        # Log any errors encountered
         logger.error(f"Error sending message to ManyChat: {e}")
         return False
 
 
-
-# /register-organizer function
 @app.route('/register-organizer', methods=['POST'])
 def register_organizer():
     try:
@@ -147,6 +163,9 @@ def register_organizer():
         organizer_index.upsert([organizer_vector])
         logger.info(f"Organizer {organizer_name} registered successfully")
 
+        # Update organizer_status attribute in ManyChat
+        update_manychat_user_attribute(messenger_user_id, "organizer_status", "registered")
+        
         # Notify success through ManyChat
         send_to_manychat(messenger_user_id, "content20240917151147_157784")
         return jsonify({"message": "Organizer registered successfully"}), 200
