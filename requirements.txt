@@ -3,3 +3,4 @@ openai
 pinecone-client
 gunicorn
 requests
+google-cloud-secret-manager
