@@ -6,6 +6,7 @@ from google.cloud import secretmanager
 
 # Initialize Flask app
 app = Flask(__name__)
+print("Starting Flask App")
 
 # Access secrets from Google Cloud Secret Manager
 def access_secret_version(secret_id):
@@ -19,6 +20,10 @@ OPENAI_API_KEY = access_secret_version("OPENAI_ORGANIZER_EVENTS_EMBEDDINGS")
 PINECONE_API_KEY = access_secret_version("PINECONE_API_KEY")
 PINECONE_ENV = access_secret_version("PINECONE_ENV")
 MANYCHAT_API_TOKEN = access_secret_version("MANYCHAT_API_TOKEN")
+
+print(f"OpenAI API Key: {OPENAI_API_KEY}")
+print(f"Pinecone Key: {PINECONE_API_KEY}")
+print(f"Pinecone Key: {MANYCHAT_API_TOKEN}")
 
 # Set OpenAI API key
 openai.api_key = OPENAI_API_KEY
