@@ -1,18 +1,17 @@
-# Use the official Python image.
-# https://hub.docker.com/_/python
+# Use the official Python image
 FROM python:3.12-slim
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Copy the current directory contents into the container
+# Copy current directory contents into the container
 COPY . /app
 
-# Install dependencies
+# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 8080 available to the world outside this container
+# Expose port 8080 to the outside world
 EXPOSE 8080
 
-# Run the Flask app
-CMD ["python", "app.py"]
+# Run the app with Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
