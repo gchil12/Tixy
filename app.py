@@ -103,22 +103,29 @@ def update_manychat_user_attribute(messenger_user_id, attribute_name, attribute_
 
 
 # Send message to ManyChat function
-
-def send_to_manychat(messenger_user_id, content_id, error_message=None):
+def send_to_manychat(messenger_user_id, content_id, error_message=None, data=None):
     url = "https://api.manychat.com/fb/sending/sendContent"
     headers = {
         "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
         "Content-Type": "application/json"
     }
-    data = {
+    
+    # Basic payload structure
+    payload = {
         "subscriber_id": messenger_user_id,
         "content_id": content_id
     }
+    
+    # Include data if provided
+    if data:
+        payload["data"] = data
+
+    # Include error message if provided
     if error_message:
-        data["error_message"] = error_message
+        payload["error_message"] = error_message
 
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=payload)
         response_data = response.json()
         logger.info(f"ManyChat Response: Status Code: {response.status_code}, Response: {response_data}")
         return response.status_code == 200
@@ -166,8 +173,8 @@ def register_organizer():
         # Update organizer_status attribute in ManyChat
         update_manychat_user_attribute(messenger_user_id, "organizer_status", "registered")
         
-        # Notify success through ManyChat
-        send_to_manychat(messenger_user_id, "content20240917151147_157784")
+        # Notify success through ManyChat with additional data
+        send_to_manychat(messenger_user_id, "content20240917151147_157784", data={"organizer_status": "registered"})
         return jsonify({"message": "Organizer registered successfully"}), 200
     except Exception as e:
         logger.error(f"Error in /register-organizer: {e}")
