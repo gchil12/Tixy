@@ -78,33 +78,17 @@ except Exception as e:
     logger.error(f"Error initializing Pinecone: {e}")
     raise
 
-# Update ManyChat user attribute
+# Function to update ManyChat user attribute
 def update_manychat_user_attribute(messenger_user_id, attribute_name, attribute_value):
-    url = "https://api.manychat.com/fb/sending/sendContent"
+    url = "https://api.manychat.com/fb/subscriber/setCustomField"
     headers = {
         "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
         "Content-Type": "application/json"
     }
     data = {
         "subscriber_id": messenger_user_id,
-        "data": {
-            "version": "v2",
-            "content": {
-                "messages": [
-                    {
-                        "type": "text",
-                        "text": f"{attribute_name} is set to {attribute_value}"
-                    }
-                ],
-                "actions": [
-                    {
-                        "action": "set_field_value",
-                        "field_name": attribute_name,
-                        "field_value": attribute_value
-                    }
-                ]
-            }
-        }
+        "field_name": attribute_name,  # Field name in ManyChat
+        "field_value": attribute_value  # Value to set
     }
 
     try:
@@ -116,7 +100,7 @@ def update_manychat_user_attribute(messenger_user_id, attribute_name, attribute_
         logger.error(f"Error updating user attribute in ManyChat: {e}")
         return False
 
-# Send message to ManyChat function
+# Function to send message to ManyChat
 def send_to_manychat(messenger_user_id, content_id, additional_data=None):
     url = "https://api.manychat.com/fb/sending/sendContent"
     headers = {
@@ -129,7 +113,7 @@ def send_to_manychat(messenger_user_id, content_id, additional_data=None):
     }
     # Include additional data if provided
     if additional_data:
-        data.update(additional_data)
+        data["data"] = additional_data  # Correct way to merge additional data
 
     try:
         response = requests.post(url, headers=headers, json=data)
@@ -177,9 +161,12 @@ def register_organizer():
         organizer_index.upsert([organizer_vector])
         logger.info(f"Organizer {organizer_name} registered successfully")
 
-        # Update organizer_status attribute in ManyChat
-        update_manychat_user_attribute(messenger_user_id, "organizer_status", "registered")
-        
+        # Update organizer_status attribute in ManyChat to "registered"
+        if update_manychat_user_attribute(messenger_user_id, "organizer_status", "registered"):
+            logger.info(f"Updated organizer_status for user {messenger_user_id} to 'registered'")
+        else:
+            logger.error(f"Failed to update organizer_status for user {messenger_user_id}")
+
         # Notify success through ManyChat with additional data
         send_to_manychat(messenger_user_id, "content20240917151147_157784", additional_data={"organizer_status": "registered"})
         return jsonify({"message": "Organizer registered successfully"}), 200
