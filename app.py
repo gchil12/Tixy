@@ -11,6 +11,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.info("Starting Flask App")
 
+@app.route('/')
+def home():
+    return "<h1>Welcome to Tixy App</h1><p>This is the home page.</p>"
+
 # Access secrets from Google Cloud Secret Manager
 def access_secret_version(secret_id):
     try:
@@ -75,29 +79,36 @@ except Exception as e:
     raise
 
 # Send message to ManyChat function
+
 def send_to_manychat(messenger_user_id, content_id, error_message=None):
+    url = "https://api.manychat.com/fb/sending/sendContent"
+    headers = {
+        "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "subscriber_id": messenger_user_id,  # Use the correct parameter name if it's different
+        "content_id": content_id
+    }
+    if error_message:
+        data["error_message"] = error_message
+
+    # Send the request to ManyChat
     try:
-        logger.info(f"Sending message to ManyChat for user {messenger_user_id} with content ID {content_id}")
-        url = "https://api.manychat.com/fb/sending/sendContent"
-        headers = {
-            "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "subscriber_id": messenger_user_id,
-            "content_id": content_id
-        }
-        if error_message:
-            data["error_message"] = error_message
         response = requests.post(url, headers=headers, json=data)
-        if response.status_code == 200:
-            logger.info("Message sent successfully to ManyChat")
-        else:
-            logger.error(f"Failed to send message to ManyChat: {response.status_code}")
+        response_data = response.json()
+        
+        # Log the response from ManyChat
+        logger.info(f"ManyChat Response: Status Code: {response.status_code}, Response: {response_data}")
+        
+        # Return True if the request was successful
         return response.status_code == 200
     except Exception as e:
+        # Log any errors encountered
         logger.error(f"Error sending message to ManyChat: {e}")
         return False
+
+
 
 # /register-organizer function
 @app.route('/register-organizer', methods=['POST'])
