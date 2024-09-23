@@ -42,17 +42,16 @@ except Exception as e:
 # Set OpenAI API key
 openai.api_key = OPENAI_API_KEY
 
-# Initialize Pinecone for organizer and event indexes using the new API
+# Initialize Pinecone for organizer and event indexes
 try:
     pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
     logger.info("Pinecone initialized successfully")
 
-    # Check if the index already exists before creating it
     if "tixy-organizers" not in pc.list_indexes().names():
         pc.create_index(
-            name="tixy-organizers", 
-            dimension=1536, 
-            metric="euclidean", 
+            name="tixy-organizers",
+            dimension=1536,
+            metric="euclidean",
             spec=pinecone.ServerlessSpec(cloud='aws', region='us-west-2')
         )
         logger.info("Created 'tixy-organizers' index")
@@ -61,9 +60,9 @@ try:
 
     if "tixy-events" not in pc.list_indexes().names():
         pc.create_index(
-            name="tixy-events", 
-            dimension=1536, 
-            metric="euclidean", 
+            name="tixy-events",
+            dimension=1536,
+            metric="euclidean",
             spec=pinecone.ServerlessSpec(cloud='aws', region='us-west-2')
         )
         logger.info("Created 'tixy-events' index")
@@ -78,9 +77,30 @@ except Exception as e:
     logger.error(f"Error initializing Pinecone: {e}")
     raise
 
+# Function to add tag in ManyChat
+def add_manychat_tag(messenger_user_id, tag_name):
+    url = "https://api.manychat.com/fb/subscriber/addTag"
+    headers = {
+        "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "subscriber_id": messenger_user_id,
+        "tag_name": tag_name
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response_data = response.json()
+        logger.info(f"Add Tag Response: Status Code: {response.status_code}, Response: {response_data}")
+        return response.status_code == 200
+    except Exception as e:
+        logger.error(f"Error adding tag in ManyChat: {e}")
+        return False
+
 # Function to update ManyChat user attribute
 def update_manychat_user_attribute(messenger_user_id, field_name, field_value):
-    url = "https://api.manychat.com/fb/subscriber/setCustomFieldByName"  # Ensure this is correct
+    url = "https://api.manychat.com/fb/subscriber/setCustomFieldByName"
     headers = {
         "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
         "Content-Type": "application/json"
@@ -109,13 +129,26 @@ def send_to_manychat(messenger_user_id, content_id, additional_data=None):
     }
     data = {
         "subscriber_id": messenger_user_id,
-        "content_id": content_id
+        "content_id": content_id,
+        "data": {
+            "version": "v2",
+            "content": {
+                "messages": [
+                    {
+                        "type": "text",
+                        "text": "You have successfully registered as an organizer."
+                    }
+                ]
+            }
+        }
     }
 
+    # Include additional data if provided
     if additional_data:
-        data.update(additional_data)
+        data["data"]["content"].update(additional_data)
 
     try:
+        logger.info(f"Sending data to ManyChat: {data}")
         response = requests.post(url, headers=headers, json=data)
         response_data = response.json()
         logger.info(f"ManyChat Response: Status Code: {response.status_code}, Response: {response_data}")
@@ -166,6 +199,12 @@ def register_organizer():
             logger.info(f"Updated organizer_status for user {messenger_user_id} to 'registered'")
         else:
             logger.error(f"Failed to update organizer_status for user {messenger_user_id}")
+
+        # Add the 'organizer-registered' tag to the user
+        if add_manychat_tag(messenger_user_id, "organizer-registered"):
+            logger.info(f"Tag 'organizer-registered' added for user {messenger_user_id}")
+        else:
+            logger.error(f"Failed to add tag 'organizer-registered' for user {messenger_user_id}")
 
         # Notify success through ManyChat with additional data
         send_to_manychat(messenger_user_id, "content20240917151147_157784", additional_data={"organizer_status": "registered"})
