@@ -78,6 +78,7 @@ except Exception as e:
     logger.error(f"Error initializing Pinecone: {e}")
     raise
 
+# Update ManyChat user attribute
 def update_manychat_user_attribute(messenger_user_id, attribute_name, attribute_value):
     url = "https://api.manychat.com/fb/sending/sendContent"
     headers = {
@@ -87,7 +88,22 @@ def update_manychat_user_attribute(messenger_user_id, attribute_name, attribute_
     data = {
         "subscriber_id": messenger_user_id,
         "data": {
-            attribute_name: attribute_value
+            "version": "v2",
+            "content": {
+                "messages": [
+                    {
+                        "type": "text",
+                        "text": f"{attribute_name} is set to {attribute_value}"
+                    }
+                ],
+                "actions": [
+                    {
+                        "action": "set_field_value",
+                        "field_name": attribute_name,
+                        "field_value": attribute_value
+                    }
+                ]
+            }
         }
     }
 
@@ -100,32 +116,23 @@ def update_manychat_user_attribute(messenger_user_id, attribute_name, attribute_
         logger.error(f"Error updating user attribute in ManyChat: {e}")
         return False
 
-
-
 # Send message to ManyChat function
-def send_to_manychat(messenger_user_id, content_id, error_message=None, data=None):
+def send_to_manychat(messenger_user_id, content_id, additional_data=None):
     url = "https://api.manychat.com/fb/sending/sendContent"
     headers = {
         "Authorization": f"Bearer {MANYCHAT_API_TOKEN}",
         "Content-Type": "application/json"
     }
-    
-    # Basic payload structure
-    payload = {
+    data = {
         "subscriber_id": messenger_user_id,
         "content_id": content_id
     }
-    
-    # Include data if provided
-    if data:
-        payload["data"] = data
-
-    # Include error message if provided
-    if error_message:
-        payload["error_message"] = error_message
+    # Include additional data if provided
+    if additional_data:
+        data.update(additional_data)
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = requests.post(url, headers=headers, json=data)
         response_data = response.json()
         logger.info(f"ManyChat Response: Status Code: {response.status_code}, Response: {response_data}")
         return response.status_code == 200
@@ -133,7 +140,7 @@ def send_to_manychat(messenger_user_id, content_id, error_message=None, data=Non
         logger.error(f"Error sending message to ManyChat: {e}")
         return False
 
-
+# Register organizer endpoint
 @app.route('/register-organizer', methods=['POST'])
 def register_organizer():
     try:
@@ -147,7 +154,7 @@ def register_organizer():
 
         # If an organizer with the given email exists
         if existing_organizers['vectors']:
-            send_to_manychat(messenger_user_id, "content20240917152105_198581", "Organizer with this email already exists")
+            send_to_manychat(messenger_user_id, "content20240917152105_198581", {"error_message": "Organizer with this email already exists"})
             logger.warning(f"Organizer with email {organizer_email} already exists")
             return jsonify({"error": "Organizer with this email already exists"}), 409
 
@@ -174,7 +181,7 @@ def register_organizer():
         update_manychat_user_attribute(messenger_user_id, "organizer_status", "registered")
         
         # Notify success through ManyChat with additional data
-        send_to_manychat(messenger_user_id, "content20240917151147_157784", data={"organizer_status": "registered"})
+        send_to_manychat(messenger_user_id, "content20240917151147_157784", additional_data={"organizer_status": "registered"})
         return jsonify({"message": "Organizer registered successfully"}), 200
     except Exception as e:
         logger.error(f"Error in /register-organizer: {e}")
